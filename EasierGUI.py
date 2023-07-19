@@ -1788,9 +1788,9 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     animate_button.click(fn=mouth, inputs=[size, face, vc_output2, faces], outputs=[animation, preview])
                     with gr.Accordion("Advanced Settings", open=False):
                         f0method0 = gr.Radio(
-                            label="Optional: Change the Pitch Extraction Algorithm.",
-                            choices=["pm", "dio", "mangio-crepe-tiny", "crepe-tiny", "crepe", "mangio-crepe", "harvest","rmvpe"], # Fork Feature. Add Crepe-Tiny
-                            value="mangio-crepe",
+                            label="Optional: Change the Pitch Extraction Algorithm.\nExtraction methods are sorted from 'worst quality' to 'best quality'.\nmangio-crepe can be better than harvest occasionally, but rmvpe is the best overall.",
+                            choices=["pm", "dio", "mangio-crepe-tiny", "crepe-tiny", "crepe", "mangio-crepe", "harvest", "rmvpe"], # Fork Feature. Add Crepe-Tiny
+                            value="rmvpe",
                             interactive=True,
                         )
                         crepe_hop_length = gr.Slider(
@@ -1869,8 +1869,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             label=i18n(
                                 "选择音高提取算法,输入歌声可用pm提速,harvest低音好但巨慢无比,crepe效果好但吃GPU"
                             ),
-                            choices=["pm", "harvest", "crepe"],
-                            value="pm",
+                            choices=["pm", "harvest", "crepe", "rmvpe"],
+                            value="harvest",
                             interactive=True,
                         )
                         filter_radius1 = gr.Slider(
