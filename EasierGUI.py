@@ -24,6 +24,31 @@ from i18n import I18nAuto
 import ffmpeg
 #from MDXNet import MDXNetDereverb
 
+# Check if we're in a Google Colab environment
+if os.path.exists('/content/'):
+    # Check if the file exists at the specified path
+    if os.path.exists('/content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt'):
+        # If the file exists, print a statement saying so
+        print("File /content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt already exists. No need to download.")
+    else:
+        # If the file doesn't exist, print a statement saying it's downloading
+        print("File /content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt does not exist. Starting download.")
+
+        # Make a request to the URL
+        response = requests.get('https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt')
+
+        # Ensure the request was successful
+        if response.status_code == 200:
+            # If the response was a success, save the content to the specified file path
+            with open('/content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt', 'wb') as f:
+                f.write(response.content)
+            print("Download complete. File saved to /content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt.")
+        else:
+            # If the response was a failure, print an error message
+            print("Failed to download file. Status code: " + str(response.status_code) + ".")
+else:
+    print("Not running on Google Colab, skipping download.")
+
 i18n = I18nAuto()
 #i18n.print()
 # 判断是否有能用来训练和加速推理的N卡
