@@ -1813,8 +1813,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     animate_button.click(fn=mouth, inputs=[size, face, vc_output2, faces], outputs=[animation, preview])
                     with gr.Accordion("Advanced Settings", open=False):
                         f0method0 = gr.Radio(
-                            label="Optional: Change the Pitch Extraction Algorithm.\nExtraction methods are sorted from 'worst quality' to 'best quality'.\nmangio-crepe can be better than harvest occasionally, but rmvpe is the best overall.",
-                            choices=["pm", "dio", "mangio-crepe-tiny", "crepe-tiny", "crepe", "mangio-crepe", "harvest", "rmvpe"], # Fork Feature. Add Crepe-Tiny
+                            label="Optional: Change the Pitch Extraction Algorithm.\nExtraction methods are sorted from 'worst quality' to 'best quality'.\nmangio-crepe may or may not be better than rmvpe in cases where 'smoothness' is more important, but rmvpe is the best overall.",
+                            choices=["pm", "dio", "crepe-tiny", "mangio-crepe-tiny", "crepe", "harvest", "mangio-crepe", "rmvpe"], # Fork Feature. Add Crepe-Tiny
                             value="rmvpe",
                             interactive=True,
                         )
@@ -1822,7 +1822,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             minimum=1,
                             maximum=512,
                             step=1,
-                            label="Mangio-Crepe Hop Length. Higher numbers will reduce the chance of extreme pitch changes but lower numbers will increase accuracy.",
+                            label="Mangio-Crepe Hop Length. Higher numbers will reduce the chance of extreme pitch changes but lower numbers will increase accuracy. 64-192 is a good range to experiment with.",
                             value=120,
                             interactive=True
                             )
@@ -2022,7 +2022,6 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
         def has_two_files_in_pretrained_folder():
             pretrained_folder = "./pretrained/"
             if not os.path.exists(pretrained_folder):
-                print("Pretrained weights not downloaded. Disabling training tab.")
                 return False
 
             files_in_folder = os.listdir(pretrained_folder)
@@ -2259,6 +2258,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     gr.Markdown(value=info)
                 except:
                     gr.Markdown("")
+        else:
+            print("Pretrained weights not downloaded. Disabling training tab.")
 
 
     #region Mangio Preset Handler Region
