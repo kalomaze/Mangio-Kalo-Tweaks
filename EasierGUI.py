@@ -26,6 +26,7 @@ import ffmpeg
 
 # Check if we're in a Google Colab environment
 if os.path.exists('/content/'):
+    print("\n-------------------------------\nRVC v2 Easy GUI (Colab Edition)\n-------------------------------\n")
     # Check if the file exists at the specified path
     if os.path.exists('/content/Retrieval-based-Voice-Conversion-WebUI/hubert_base.pt'):
         # If the file exists, print a statement saying so
@@ -47,7 +48,8 @@ if os.path.exists('/content/'):
             # If the response was a failure, print an error message
             print("Failed to download file. Status code: " + str(response.status_code) + ".")
 else:
-    print("Not running on Google Colab, skipping download.")
+    print("\n-------------------------------\nRVC v2 Easy GUI (Local Edition)\n-------------------------------\n")
+    print("-------------------------------\nNot running on Google Colab, skipping download.")
 
 i18n = I18nAuto()
 #i18n.print()
@@ -2029,7 +2031,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
             return num_files >= 2
 
         if has_two_files_in_pretrained_folder():    
-            print("Pretrained weights are downloaded. Training tab enabled!")       
+            print("Pretrained weights are downloaded. Training tab enabled!\n-------------------------------")       
             with gr.TabItem("Train", visible=False):
                 with gr.Row():
                     with gr.Column():
@@ -2260,6 +2262,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     gr.Markdown("")
         else:
             print("Pretrained weights not downloaded. Disabling training tab.")
+            print("Wondering how to train a voice? Visit here for the RVC model training guide: https://t.ly/RVC_Training_Guide")
+            print("-------------------------------\n")
 
 
     #region Mangio Preset Handler Region
