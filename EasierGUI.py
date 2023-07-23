@@ -53,6 +53,113 @@ else:
     print("\n-------------------------------\nRVC v2 Easy GUI (Local Edition)\n-------------------------------\n")
     print("-------------------------------\nNot running on Google Colab, skipping download.")
 
+def formant_apply(qfrency, tmbre):
+    Quefrency = qfrency
+    Timbre = tmbre
+    DoFormant = True
+    
+    with open('formanting.txt', 'w') as fxxxf:
+        fxxxf.truncate(0)
+
+        fxxxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
+    return ({"value": Quefrency, "__type__": "update"}, {"value": Timbre, "__type__": "update"})
+
+def get_fshift_presets():
+    fshift_presets_list = []
+    for dirpath, dirnames, filenames in os.walk("./formantshiftcfg/"):
+        for filename in filenames:
+            if filename.endswith(".txt"):
+                fshift_presets_list.append(os.path.join(dirpath,filename).replace('\\','/'))
+                
+    if len(fshift_presets_list) > 0:
+        return fshift_presets_list
+    else:
+        return ''
+
+
+
+def formant_enabled(cbox, qfrency, tmbre, frmntapply, formantpreset, formant_refresh_button):
+    
+    if (cbox):
+
+        DoFormant = True
+        with open('formanting.txt', 'w') as fxxf:
+            fxxf.truncate(0)
+
+            fxxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
+        #print(f"is checked? - {cbox}\ngot {DoFormant}")
+        
+        return (
+            {"value": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+            {"visible": True, "__type__": "update"},
+        )
+        
+        
+    else:
+        
+        DoFormant = False
+        with open('formanting.txt', 'w') as fxf:
+            fxf.truncate(0)
+
+            fxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
+        #print(f"is checked? - {cbox}\ngot {DoFormant}")
+        return (
+            {"value": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+            {"visible": False, "__type__": "update"},
+        )
+        
+
+
+def preset_apply(preset, qfer, tmbr):
+    if str(preset) != '':
+        with open(str(preset), 'r') as p:
+            content = p.readlines()
+            qfer, tmbr = content[0].split('\n')[0], content[1]
+            
+            formant_apply(qfer, tmbr)
+    else:
+        pass
+    return ({"value": qfer, "__type__": "update"}, {"value": tmbr, "__type__": "update"})
+
+def update_fshift_presets(preset, qfrency, tmbre):
+    
+    qfrency, tmbre = preset_apply(preset, qfrency, tmbre)
+    
+    if (str(preset) != ''):
+        with open(str(preset), 'r') as p:
+            content = p.readlines()
+            qfrency, tmbre = content[0].split('\n')[0], content[1]
+            
+            formant_apply(qfrency, tmbre)
+    else:
+        pass
+    return (
+        {"choices": get_fshift_presets(), "__type__": "update"},
+        {"value": qfrency, "__type__": "update"},
+        {"value": tmbre, "__type__": "update"},
+    )
+
+DoFormant = False
+
+with open('formanting.txt', 'r') as fvf:
+    content = fvf.readlines()
+    #print("true")
+    if 'True' in content[0]:
+        print("formant true")
+        DoFormant = True
+    else:
+        print("nuh uh!")
+    Quefrency, Timbre = content[1].split('\n')[0], content[2].split('\n')[0]
+
 i18n = I18nAuto()
 #i18n.print()
 # 判断是否有能用来训练和加速推理的N卡
@@ -178,7 +285,7 @@ def vc_single(
         return "You need to upload an audio", None
     f0_up_key = int(f0_up_key)
     try:
-        audio = load_audio(input_audio_path, 16000)
+        audio = load_audio(input_audio_path, 16000, DoFormant, Quefrency, Timbre)
         audio_max = np.abs(audio).max() / 0.95
         if audio_max > 1:
             audio /= audio_max
@@ -1862,6 +1969,48 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             step=0.01,
                             interactive=True,
                             )
+                        formanting = gr.Checkbox(
+                            value=False,
+                            label="[EXPERIMENTAL, WAV ONLY] Formant shift inference audio",
+                            info="Used for male to female and vice-versa conversions",
+                            interactive=True,
+                            visible=True,
+                        )
+                        
+                        formant_preset = gr.Dropdown(
+                            value='',
+                            choices=get_fshift_presets(),
+                            label="browse presets for formanting",
+                            visible=False,
+                        )
+                        formant_refresh_button = gr.Button(value='\U0001f504', visible=False,variant='primary')
+                        #formant_refresh_button = ToolButton( elem_id='1')
+                        #create_refresh_button(formant_preset, lambda: {"choices": formant_preset}, "refresh_list_shiftpresets")
+                        
+                        qfrency = gr.Slider(
+                                value=Quefrency,
+                                label="Quefrency for formant shifting",
+                                minimum=-16.0,
+                                maximum=16.0,
+                                step=0.1,
+                                visible=False,
+                                interactive=True,
+                            )
+                        tmbre = gr.Slider(
+                            value=Timbre,
+                            label="Timbre for formant shifting",
+                            minimum=-16.0,
+                            maximum=16.0,
+                            step=0.1,
+                            visible=False,
+                            interactive=True,
+                        )
+                        
+                        formant_preset.change(fn=preset_apply, inputs=[formant_preset, qfrency, tmbre], outputs=[qfrency, tmbre])
+                        frmntbut = gr.Button("Apply", variant="primary", visible=False)
+                        formanting.change(fn=formant_enabled,inputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button],outputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button])
+                        frmntbut.click(fn=formant_apply,inputs=[qfrency, tmbre], outputs=[qfrency, tmbre])
+                        formant_refresh_button.click(fn=update_fshift_presets,inputs=[formant_preset, qfrency, tmbre],outputs=[formant_preset, qfrency, tmbre])
             with gr.Row():
                 vc_output1 = gr.Textbox("")
                 f0_file = gr.File(label=i18n("F0曲线文件, 可选, 一行一个音高, 代替默认F0及升降调"), visible=False)
@@ -1899,7 +2048,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                 "选择音高提取算法,输入歌声可用pm提速,harvest低音好但巨慢无比,crepe效果好但吃GPU"
                             ),
                             choices=["pm", "harvest", "crepe", "rmvpe"],
-                            value="harvest",
+                            value="rmvpe",
                             interactive=True,
                         )
                         filter_radius1 = gr.Slider(
@@ -2022,7 +2171,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                 https://paypal.me/lesantillan
                 """
                 )
-
+                
         def has_two_files_in_pretrained_folder():
             pretrained_folder = "./pretrained/"
             if not os.path.exists(pretrained_folder):
@@ -2266,7 +2415,6 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
             print("Pretrained weights not downloaded. Disabling training tab.")
             print("Wondering how to train a voice? Visit here for the RVC model training guide: https://t.ly/RVC_Training_Guide")
             print("-------------------------------\n")
-
 
     #region Mangio Preset Handler Region
     def save_preset(preset_name,sid0,vc_transform,input_audio,f0method,crepe_hop_length,filter_radius,file_index1,file_index2,index_rate,resample_sr,rms_mix_rate,protect,f0_file):
