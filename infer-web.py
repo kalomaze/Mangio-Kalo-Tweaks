@@ -695,7 +695,28 @@ def update_fshift_presets(preset, qfrency, tmbre):
     )
 
 
+def kaloprocessing(trainset_dir4):
+    cmd = ["python", "kalo_processing.py", trainset_dir4]
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
+        for line in p.stdout:
+            print(line, end='')
+            sys.stdout.flush()
+
 def preprocess_dataset(trainset_dir, exp_dir, sr, n_p):
+    print(trainset_dir)
+    trainset_dir += "\\proper_splits"
+    print(trainset_dir)
+
+    if not os.path.exists(trainset_dir):
+        os.makedirs(trainset_dir)
+        print(kaloprocessing(trainset_dir))
+        print(f"---------------\nCreated clean split folder: {trainset_dir}")
+    else:
+        shutil.rmtree(trainset_dir)
+        os.makedirs(trainset_dir)
+        print(kaloprocessing(trainset_dir))
+        print(f"---------------\nDeleted, then remade clean split folder: {trainset_dir}")
+        
     sr = sr_dict[sr]
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
     f = open("%s/logs/%s/preprocess.log" % (now_dir, exp_dir), "w")
