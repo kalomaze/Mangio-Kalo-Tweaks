@@ -134,8 +134,8 @@ def merge_files(output_folder_path, chunk_size, original_sample_rate=44100):
     # Generate a list of all files in the output folder
     all_files = glob.glob(os.path.join(output_folder_path, '*.wav'))
 
-    # Sort the files based on their numeric order
-    all_files.sort(key=natural_sort_key)
+    # Sort the files based on their names (not numerically)
+    all_files.sort()
 
     i = 0
     while i < len(all_files) - 1:  # Ignore the last file
@@ -146,35 +146,56 @@ def merge_files(output_folder_path, chunk_size, original_sample_rate=44100):
         data1, sample_rate1 = sf.read(file)
         duration1 = len(data1) / sample_rate1 * 1000  # Convert to ms
 
-        next_file = all_files[i + 1]
-        print(f"Determining duration for file: {next_file}")
-        data2, sample_rate2 = sf.read(next_file)
-        duration2 = len(data2) / sample_rate2 * 1000  # Convert to ms
+        # Initialize variables
+        total_duration = duration1
+        files_to_merge = [data1]
+        merged_indexes = []  # Keep track of merged files' indexes
 
-        # If the next file exists, check if they can be merged
-        if duration1 + duration2 <= chunk_size:
-            print(f"Merging files: {file} and {next_file}")
+        j = i + 1
 
-            # Handle mono/stereo channel differences
-            if len(data1.shape) < len(data2.shape):
-                data1 = np.tile(data1[:, np.newaxis], [1, data2.shape[1]])
-            elif len(data1.shape) > len(data2.shape):
-                data2 = np.tile(data2[:, np.newaxis], [1, data1.shape[1]])
+        # Loop through next files until total duration is close to chunk size
+        while total_duration < chunk_size and j < len(all_files):
+            next_file = all_files[j]
+            print(f"Determining duration for file: {next_file}")
+            data2, sample_rate2 = sf.read(next_file)
+            duration2 = len(data2) / sample_rate2 * 1000  # Convert to ms
 
-            # Merge the files
-            merged_data = np.concatenate((data1, data2), axis=0)
+            # If merging this file would not exceed the chunk size, merge it
+            if total_duration + duration2 <= chunk_size:
+                print(f"Adding file {next_file} to merge list")
+
+                # Handle mono/stereo channel differences
+                if len(data1.shape) < len(data2.shape):
+                    data1 = np.tile(data1[:, np.newaxis], [1, data2.shape[1]])
+                elif len(data1.shape) > len(data2.shape):
+                    data2 = np.tile(data2[:, np.newaxis], [1, data1.shape[1]])
+
+                # Add the file to the merge list and update the total duration
+                files_to_merge.append(data2)
+                total_duration += duration2
+                merged_indexes.append(j)
+                j += 1
+            else:
+                # If this file would exceed the chunk size, skip it
+                j += 1
+
+        # Merge the files
+        if len(files_to_merge) > 1:  # If there are files to merge
+            print(f"Merging files from {file} to {all_files[j-1]}")
+            merged_data = np.concatenate(files_to_merge, axis=0)
 
             # Write the merged data to the first file
             sf.write(file, merged_data, original_sample_rate)
+            print(f"Merged files from '{file}' to '{all_files[j-1]}' into '{file}'.")
 
-            print(f"Merged '{file}' and '{next_file}' into '{file}'.")
+            # Delete the other files from the filesystem and the list
+            for k in merged_indexes:
+                os.remove(all_files[k])
+            for index in sorted(merged_indexes, reverse=True):
+                del all_files[index]
 
-            # Delete the second file from the filesystem and the list
-            os.remove(next_file)
-            del all_files[i + 1]
-        else:
-            # If can't merge, try next file
-            i += 1
+        # If no file was merged, increment i to try next file
+        i += 1
 
 if __name__ == "__main__":
     chunk_size = 3700
