@@ -123,8 +123,8 @@ def process_files(input_folder_path, output_folder_path, chunk_size):
 
     for extension in extensions:
         for input_file in glob.glob(os.path.join(input_folder_path, f'*{extension}')):
-            split_1 = 250
-            split_2 = 50
+            split_1 = 50
+            split_2 = 25
             min_split = 500
             split_audio(input_file, chunk_size, split_1, split_2, min_split, output_folder_path)
 
