@@ -21,6 +21,7 @@ import threading
 from random import shuffle
 from subprocess import Popen
 from time import sleep
+import subprocess
 
 import faiss
 import ffmpeg
@@ -696,12 +697,20 @@ def update_fshift_presets(preset, qfrency, tmbre):
 
 
 def kaloprocessing(trainset_dir4):
-    cmd = ["python", "kalo_processing.py", trainset_dir4]
+    runtime_folder = "runtime"
+    python_exe = "python.exe"
+    
+    if os.path.exists(runtime_folder) and os.path.isfile(os.path.join(runtime_folder, python_exe)):
+        python_path = os.path.join(runtime_folder, python_exe)
+    else:
+        python_path = "python"
+    
+    cmd = [python_path, "kalo_processing.py", trainset_dir4]
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
         for line in p.stdout:
             print(line, end='')
             sys.stdout.flush()
-
+            
 def preprocess_dataset(trainset_dir, exp_dir, sr, n_p):
     print(trainset_dir)
     trainset_dir += "\\proper_splits"
