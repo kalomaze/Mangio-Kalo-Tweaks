@@ -61,12 +61,15 @@ signal.signal(signal.SIGTERM, clear_sql)
 
 global DoFormant, Quefrency, Timbre
 
-
 try:
     cursor.execute("SELECT Quefrency, Timbre, DoFormant FROM formant_data")
-    Quefrency, Timbre, DoFormant = cursor.fetchone()
+    row = cursor.fetchone()
+    if row is not None:
+        Quefrency, Timbre, DoFormant = row
+    else:
+        raise ValueError("No data")
     
-except Exception:
+except (ValueError, TypeError):
     Quefrency = 8.0
     Timbre = 1.2
     DoFormant = False
