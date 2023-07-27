@@ -1684,14 +1684,14 @@ def get_presets():
 def change_choices2():
     audio_files=[]
     for filename in os.listdir("./audios"):
-        if filename.endswith(('.wav','.mp3')):
-            audio_files.append(os.path.join('./audios',filename))
+        if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
+            audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
     return {"choices": sorted(audio_files), "__type__": "update"}, {"__type__": "update"}
     
 audio_files=[]
 for filename in os.listdir("./audios"):
-    if filename.endswith(('.wav','.mp3')):
-        audio_files.append(os.path.join('./audios',filename))
+    if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
+        audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
         
 def get_index():
     if check_for_name() != '':
@@ -1915,7 +1915,7 @@ def zip_downloader(model):
 with gr.Blocks(theme=gr.themes.Base()) as app:
     with gr.Tabs():
         with gr.TabItem("Inference"):
-            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 </h1>")
+            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 [With extra features and fixes by kalomaze & alexlnkp]</h1>")
             # Inference Preset Row
             # with gr.Row():
             #     mangio_preset = gr.Dropdown(label="Inference Preset", choices=sorted(get_presets()))
