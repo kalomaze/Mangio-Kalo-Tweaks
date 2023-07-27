@@ -23,7 +23,57 @@ torch.manual_seed(114514)
 from i18n import I18nAuto
 import ffmpeg
 
+import signal
+
 import math
+import sqlite3
+
+conn = sqlite3.connect('TEMP/db:cachedb?mode=memory&cache=shared', check_same_thread=False)
+cursor = conn.cursor()
+
+
+
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS formant_data (
+        Quefrency FLOAT,
+        Timbre FLOAT,
+        DoFormant INTEGER
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS stop_train (
+        stop BOOL
+    )
+""")
+
+def clear_sql(signal, frame):
+    cursor.execute("DELETE FROM formant_data")
+    cursor.execute("DELETE FROM stop_train")
+    conn.commit()
+    conn.close()
+    print("Clearing SQL database...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, clear_sql)
+signal.signal(signal.SIGTERM, clear_sql)
+
+global DoFormant, Quefrency, Timbre
+
+
+try:
+    cursor.execute("SELECT Quefrency, Timbre, DoFormant FROM formant_data")
+    Quefrency, Timbre, DoFormant = cursor.fetchone()
+    
+except Exception:
+    Quefrency = 8.0
+    Timbre = 1.2
+    DoFormant = False
+    cursor.execute("DELETE FROM formant_data")
+    cursor.execute("DELETE FROM stop_train")
+    cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (Quefrency, Timbre, 0))
+    conn.commit()
 
 #from MDXNet import MDXNetDereverb
 
@@ -60,11 +110,10 @@ def formant_apply(qfrency, tmbre):
     Quefrency = qfrency
     Timbre = tmbre
     DoFormant = True
+    cursor.execute("DELETE FROM formant_data")
+    cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, 1))
+    conn.commit()
     
-    with open('formanting.txt', 'w') as fxxxf:
-        fxxxf.truncate(0)
-
-        fxxxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
     return ({"value": Quefrency, "__type__": "update"}, {"value": Timbre, "__type__": "update"})
 
 def get_fshift_presets():
@@ -86,10 +135,9 @@ def formant_enabled(cbox, qfrency, tmbre, frmntapply, formantpreset, formant_ref
     if (cbox):
 
         DoFormant = True
-        with open('formanting.txt', 'w') as fxxf:
-            fxxf.truncate(0)
-
-            fxxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
+        cursor.execute("DELETE FROM formant_data")
+        cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, 1))
+        conn.commit()
         #print(f"is checked? - {cbox}\ngot {DoFormant}")
         
         return (
@@ -105,10 +153,10 @@ def formant_enabled(cbox, qfrency, tmbre, frmntapply, formantpreset, formant_ref
     else:
         
         DoFormant = False
-        with open('formanting.txt', 'w') as fxf:
-            fxf.truncate(0)
-
-            fxf.writelines([str(DoFormant) + '\n', str(Quefrency) + '\n', str(Timbre) + '\n'])
+        cursor.execute("DELETE FROM formant_data")
+        cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, int(DoFormant)))
+        conn.commit()
+        
         #print(f"is checked? - {cbox}\ngot {DoFormant}")
         return (
             {"value": False, "__type__": "update"},
@@ -150,17 +198,6 @@ def update_fshift_presets(preset, qfrency, tmbre):
         {"value": qfrency, "__type__": "update"},
         {"value": tmbre, "__type__": "update"},
     )
-
-DoFormant = False
-
-with open('formanting.txt', 'r') as fvf:
-    content = fvf.readlines()
-    if 'True' in content[0]:
-        DoFormant = True
-    else:
-        DoFormant = False
-        pass
-    Quefrency, Timbre = content[1].split('\n')[0], content[2].split('\n')[0]
 
 i18n = I18nAuto()
 #i18n.print()
@@ -828,6 +865,8 @@ def click_train(
     if_save_every_weights18,
     version19,
 ):
+    cursor.execute("DELETE FROM stop_train")
+    conn.commit()
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
@@ -919,9 +958,9 @@ def click_train(
                 save_epoch10,
                 ("-pg %s" % pretrained_G14) if pretrained_G14 != "" else "",
                 ("-pd %s" % pretrained_D15) if pretrained_D15 != "" else "",
-                1 if if_save_latest13 == i18n("是") else 0,
-                1 if if_cache_gpu17 == i18n("是") else 0,
-                1 if if_save_every_weights18 == i18n("是") else 0,
+                1 if if_save_latest13 == True else 0,
+                1 if if_cache_gpu17 == True else 0,
+                1 if if_save_every_weights18 == True else 0,
                 version19,
                 log_interval,
             )
@@ -939,17 +978,19 @@ def click_train(
                 save_epoch10,
                 ("-pg %s" % pretrained_G14) if pretrained_G14 != "" else "\b",
                 ("-pd %s" % pretrained_D15) if pretrained_D15 != "" else "\b",
-                1 if if_save_latest13 == i18n("是") else 0,
-                1 if if_cache_gpu17 == i18n("是") else 0,
-                1 if if_save_every_weights18 == i18n("是") else 0,
+                1 if if_save_latest13 == True else 0,
+                1 if if_cache_gpu17 == True else 0,
+                1 if if_save_every_weights18 == True else 0,
                 version19,
                 log_interval,
             )
         )
     print(cmd)
     p = Popen(cmd, shell=True, cwd=now_dir)
+    global PID
+    PID = p.pid
     p.wait()
-    return "训练结束, 您可查看控制台训练日志或实验文件夹下的train.log"
+    return ("训练结束, 您可查看控制台训练日志或实验文件夹下的train.log", {"visible": False, "__type__": "update"}, {"visible": True, "__type__": "update"})
 
 
 # but4.click(train_index, [exp_dir1], info3)
@@ -1179,9 +1220,9 @@ def train1key(
                 save_epoch10,
                 ("-pg %s" % pretrained_G14) if pretrained_G14 != "" else "",
                 ("-pd %s" % pretrained_D15) if pretrained_D15 != "" else "",
-                1 if if_save_latest13 == i18n("是") else 0,
-                1 if if_cache_gpu17 == i18n("是") else 0,
-                1 if if_save_every_weights18 == i18n("是") else 0,
+                1 if if_save_latest13 == True else 0,
+                1 if if_cache_gpu17 == True else 0,
+                1 if if_save_every_weights18 == True else 0,
                 version19,
             )
         )
@@ -1198,9 +1239,9 @@ def train1key(
                 save_epoch10,
                 ("-pg %s" % pretrained_G14) if pretrained_G14 != "" else "",
                 ("-pd %s" % pretrained_D15) if pretrained_D15 != "" else "",
-                1 if if_save_latest13 == i18n("是") else 0,
-                1 if if_cache_gpu17 == i18n("是") else 0,
-                1 if if_save_every_weights18 == i18n("是") else 0,
+                1 if if_save_latest13 == True else 0,
+                1 if if_cache_gpu17 == True else 0,
+                1 if if_save_every_weights18 == True else 0,
                 version19,
             )
         )
@@ -1249,6 +1290,10 @@ def train1key(
     )
     yield get_info_str(i18n("全流程结束！"))
 
+
+def whethercrepeornah(radio):
+    mango = True if radio == 'mangio-crepe' or radio == 'mangio-crepe-tiny' else False
+    return ({"visible": mango, "__type__": "update"})
 
 #                    ckpt_path2.change(change_info_,[ckpt_path2],[sr__,if_f0__])
 def change_info_(ckpt_path):
@@ -1437,9 +1482,9 @@ def cli_train(com):
     total_epoch = int(com[5]) # 10000
     batch_size = int(com[6])
     gpu_card_slot_numbers = com[7]
-    if_save_latest = i18n("是") if (int(com[8]) == 1) else i18n("否")
-    if_cache_gpu = i18n("是") if (int(com[9]) == 1) else i18n("否")
-    if_save_every_weight = i18n("是") if (int(com[10]) == 1) else i18n("否")
+    if_save_latest = True if (int(com[8]) == 1) else False
+    if_cache_gpu = True if (int(com[9]) == 1) else False
+    if_save_every_weight = True if (int(com[10]) == 1) else False
     version = com[11]
 
     pretrained_base = "pretrained/" if version == "v1" else "pretrained_v2/" 
@@ -1775,6 +1820,28 @@ def mouth(size, face, voice, faces):
 eleven_voices = ['Adam','Antoni','Josh','Arnold','Sam','Bella','Rachel','Domi','Elli']
 eleven_voices_ids=['pNInz6obpgDQGcFmaJgB','ErXwobaYiN019PkySvjV','TxGEqnHWrfWFTfGW9XjX','VR6AewLTigWG4xSOukaG','yoZ06aMxZJJ28mfd3POQ','EXAVITQu4vr4xnSDxMaL','21m00Tcm4TlvDq8ikWAM','AZnzlk1XvdvUeBnXmlld','MF3mGyEYCl7XYWbV9V6O']
 chosen_voice = dict(zip(eleven_voices, eleven_voices_ids))
+
+def stoptraining(mim): 
+    if int(mim) == 1:
+        
+        cursor.execute("INSERT INTO stop_train (stop) VALUES (?)", (True,))
+        conn.commit()
+        #p.terminate()
+        #p.kill()
+        try:
+            os.kill(PID, signal.SIGTERM)
+        except Exception as e:
+            print(f"Couldn't click due to {e}")
+            pass
+    else:
+        pass
+    
+    return (
+        {"visible": False, "__type__": "update"}, 
+        {"visible": True, "__type__": "update"},
+    )
+
+
 def elevenTTS(xiapi, text, id, lang):
     if xiapi!= '' and id !='': 
         choice = chosen_voice[id]
@@ -1953,14 +2020,17 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value="rmvpe",
                             interactive=True,
                         )
+                        
                         crepe_hop_length = gr.Slider(
                             minimum=1,
                             maximum=512,
                             step=1,
                             label="Mangio-Crepe Hop Length. Higher numbers will reduce the chance of extreme pitch changes but lower numbers will increase accuracy. 64-192 is a good range to experiment with.",
                             value=120,
-                            interactive=True
+                            interactive=True,
+                            visible=False,
                             )
+                        f0method0.change(fn=whethercrepeornah, inputs=[f0method0], outputs=[crepe_hop_length])
                         filter_radius0 = gr.Slider(
                             minimum=0,
                             maximum=7,
@@ -1994,8 +2064,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             interactive=True,
                             )
                         formanting = gr.Checkbox(
-                            value=False,
-                            label="[EXPERIMENTAL, WAV ONLY] Formant shift inference audio",
+                            value=bool(DoFormant),
+                            label="[EXPERIMENTAL] Formant shift inference audio",
                             info="Used for male to female and vice-versa conversions",
                             interactive=True,
                             visible=True,
@@ -2005,33 +2075,39 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value='',
                             choices=get_fshift_presets(),
                             label="browse presets for formanting",
-                            visible=False,
+                            visible=bool(DoFormant),
                         )
-                        formant_refresh_button = gr.Button(value='\U0001f504', visible=False,variant='primary')
+                        formant_refresh_button = gr.Button(
+                            value='\U0001f504',
+                            visible=bool(DoFormant),
+                            variant='primary',
+                        )
                         #formant_refresh_button = ToolButton( elem_id='1')
                         #create_refresh_button(formant_preset, lambda: {"choices": formant_preset}, "refresh_list_shiftpresets")
                         
                         qfrency = gr.Slider(
                                 value=Quefrency,
+                                info="Default value is 1.0",
                                 label="Quefrency for formant shifting",
-                                minimum=-16.0,
+                                minimum=0.0,
                                 maximum=16.0,
                                 step=0.1,
-                                visible=False,
+                                visible=bool(DoFormant),
                                 interactive=True,
                             )
                         tmbre = gr.Slider(
                             value=Timbre,
+                            info="Default value is 1.0",
                             label="Timbre for formant shifting",
-                            minimum=-16.0,
+                            minimum=0.0,
                             maximum=16.0,
                             step=0.1,
-                            visible=False,
+                            visible=bool(DoFormant),
                             interactive=True,
                         )
                         
                         formant_preset.change(fn=preset_apply, inputs=[formant_preset, qfrency, tmbre], outputs=[qfrency, tmbre])
-                        frmntbut = gr.Button("Apply", variant="primary", visible=False)
+                        frmntbut = gr.Button("Apply", variant="primary", visible=bool(DoFormant))
                         formanting.change(fn=formant_enabled,inputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button],outputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button])
                         frmntbut.click(fn=formant_apply,inputs=[qfrency, tmbre], outputs=[qfrency, tmbre])
                         formant_refresh_button.click(fn=update_fshift_presets,inputs=[formant_preset, qfrency, tmbre],outputs=[formant_preset, qfrency, tmbre])
@@ -2243,7 +2319,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         )
                         trainset_dir4 = gr.Textbox(label="Path to your dataset (audios, not zip):", value="./dataset")
                         easy_uploader = gr.Files(label='OR Drop your audios here. They will be uploaded in your dataset path above.',file_types=['audio'])
-                        but1 = gr.Button("1.Process The Dataset", variant="primary")
+                        but1 = gr.Button("1. Process The Dataset", variant="primary")
                         info1 = gr.Textbox(label="Status (wait until it says 'end preprocess'):", value="")
                         easy_uploader.upload(fn=upload_to_dataset, inputs=[easy_uploader, trainset_dir4], outputs=[info1])
                         but1.click(
@@ -2275,15 +2351,18 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value="rmvpe",
                             interactive=True,
                         )
+                        
                         extraction_crepe_hop_length = gr.Slider(
                             minimum=1,
                             maximum=512,
                             step=1,
                             label=i18n("crepe_hop_length"),
                             value=128,
-                            interactive=True
+                            interactive=True,
+                            visible=False,
                         )
-                        but2 = gr.Button("2.Pitch Extraction", variant="primary")
+                        f0method8.change(fn=whethercrepeornah, inputs=[f0method8], outputs=[extraction_crepe_hop_length])
+                        but2 = gr.Button("2. Pitch Extraction", variant="primary")
                         info2 = gr.Textbox(label="Status(Check the Colab Notebook's cell output):", value="", max_lines=8)
                         but2.click(
                                 extract_f0_feature,
@@ -2293,25 +2372,35 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     with gr.Row():      
                         with gr.Column():
                             total_epoch11 = gr.Slider(
-                                minimum=0,
-                                maximum=10000,
+                                minimum=1,
+                                maximum=5000,
                                 step=10,
                                 label="Total # of training epochs (IF you choose a value too high, your model will sound horribly overtrained.):",
                                 value=250,
                                 interactive=True,
                             )
-                            but3 = gr.Button("3.Train Model", variant="primary")
+                            butstop = gr.Button(
+                                "Stop Training",
+                                variant='primary',
+                                visible=False,
+                            )
+                            but3 = gr.Button("3. Train Model", variant="primary", visible=True)
+                            
+                            but3.click(fn=stoptraining, inputs=[gr.Number(value=0, visible=False)], outputs=[but3, butstop])
+                            butstop.click(fn=stoptraining, inputs=[gr.Number(value=1, visible=False)], outputs=[butstop, but3])
+                            
+                            
                             but4 = gr.Button("4.Train Index", variant="primary")
                             info3 = gr.Textbox(label="Status(Check the Colab Notebook's cell output):", value="", max_lines=10)
                             with gr.Accordion("Training Preferences (You can leave these as they are)", open=False):
                                 #gr.Markdown(value=i18n("step3: 填写训练设置, 开始训练模型和索引"))
                                 with gr.Column():
                                     save_epoch10 = gr.Slider(
-                                        minimum=0,
-                                        maximum=100,
-                                        step=5,
-                                        label="Backup every # of epochs:",
-                                        value=25,
+                                        minimum=1,
+                                        maximum=200,
+                                        step=1,
+                                        label="Backup every X amount of epochs:",
+                                        value=10,
                                         interactive=True,
                                     )
                                     batch_size12 = gr.Slider(
@@ -2322,27 +2411,22 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                         value=default_batch_size,
                                         interactive=True,
                                     )
-                                    if_save_latest13 = gr.Radio(
-                                        label=i18n("是否仅保存最新的ckpt文件以节省硬盘空间"),
-                                        choices=[i18n("是"), i18n("否")],
-                                        value=i18n("是"),
+                                    if_save_latest13 = gr.Checkbox(
+                                        label="Save only the latest '.ckpt' file to save disk space.",
+                                        value=True,
                                         interactive=True,
                                     )
-                                    if_cache_gpu17 = gr.Radio(
-                                        label=i18n(
-                                            "是否缓存所有训练集至显存. 10min以下小数据可缓存以加速训练, 大数据缓存会炸显存也加不了多少速"
-                                        ),
-                                        choices=[i18n("是"), i18n("否")],
-                                        value=i18n("否"),
+                                    if_cache_gpu17 = gr.Checkbox(
+                                        label="Cache all training sets to GPU memory. Caching small datasets (less than 10 minutes) can speed up training, but caching large datasets will consume a lot of GPU memory and may not provide much speed improvement.",
+                                        value=False,
                                         interactive=True,
                                     )
-                                    if_save_every_weights18 = gr.Radio(
-                                        label=i18n("是否在每次保存时间点将最终小模型保存至weights文件夹"),
-                                        choices=[i18n("是"), i18n("否")],
-                                        value=i18n("是"),
+                                    if_save_every_weights18 = gr.Checkbox(
+                                        label="Save a small final model to the 'weights' folder at each save point.",
+                                        value=True,
                                         interactive=True,
                                     )
-                            zip_model = gr.Button('5.Download Model')
+                            zip_model = gr.Button('5. Download Model')
                             zipped_model = gr.Files(label='Your Model and Index file can be downloaded here:')
                             zip_model.click(fn=zip_downloader, inputs=[exp_dir1], outputs=[zipped_model, info3])
                 with gr.Group():
@@ -2396,7 +2480,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             if_save_every_weights18,
                             version19,
                         ],
-                        info3,
+                        [
+                            info3,
+                            butstop,
+                            but3,
+                        ],
                     )
                     but4.click(train_index, [exp_dir1, version19], info3)
                     but5.click(
