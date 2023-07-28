@@ -1915,7 +1915,7 @@ def zip_downloader(model):
 with gr.Blocks(theme=gr.themes.Base()) as app:
     with gr.Tabs():
         with gr.TabItem("Inference"):
-            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 [With extra features and fixes by kalomaze & alexlnkp]</h1>")
+            gr.HTML(i18n("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 [With extra features and fixes by kalomaze & alexlnkp]</h1>"))
             # Inference Preset Row
             # with gr.Row():
             #     mangio_preset = gr.Dropdown(label="Inference Preset", choices=sorted(get_presets()))
@@ -1926,11 +1926,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
 
             # Other RVC stuff
             with gr.Row():
-                sid0 = gr.Dropdown(label="1.Choose your Model.", choices=sorted(names), value=check_for_name())
-                refresh_button = gr.Button("Refresh", variant="primary")
+                sid0 = gr.Dropdown(label=i18n("1.Choose your Model."), choices=sorted(names), value=check_for_name())
+                refresh_button = gr.Button(i18n("Refresh"), variant="primary")
                 if check_for_name() != '':
                     get_vc(sorted(names)[0])
-                vc_transform0 = gr.Number(label="Optional: You can change the pitch here or leave it at 0.", value=0)
+                vc_transform0 = gr.Number(label=i18n("Optional: You can change the pitch here or leave it at 0."), value=0)
                 #clean_button = gr.Button(i18n("卸载音色省显存"), variant="primary")
                 spk_item = gr.Slider(
                     minimum=0,
@@ -1947,53 +1947,53 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     inputs=[sid0],
                     outputs=[spk_item],
                 )
-                but0 = gr.Button("Convert", variant="primary")
+                but0 = gr.Button(i18n("Convert"), variant="primary")
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
-                        dropbox = gr.File(label="Drop your audio here & hit the Reload button.")
+                        dropbox = gr.File(label=i18n("Drop your audio here & hit the Reload button."))
                     with gr.Row():
-                        record_button=gr.Audio(source="microphone", label="OR Record audio.", type="filepath")
+                        record_button=gr.Audio(source="microphone", label=i18n("OR Record audio."), type="filepath")
                     with gr.Row():
                         input_audio0 = gr.Dropdown(
-                            label="2.Choose your audio.",
+                            label=i18n("2.Choose your audio."),
                             value="./audios/someguy.mp3",
                             choices=audio_files
                             )
                         dropbox.upload(fn=save_to_wav2, inputs=[dropbox], outputs=[input_audio0])
                         dropbox.upload(fn=change_choices2, inputs=[], outputs=[input_audio0])
-                        refresh_button2 = gr.Button("Refresh", variant="primary", size='sm')
+                        refresh_button2 = gr.Button(i18n("Refresh"), variant="primary", size='sm')
                         record_button.change(fn=save_to_wav, inputs=[record_button], outputs=[input_audio0])
                         record_button.change(fn=change_choices2, inputs=[], outputs=[input_audio0])
                     with gr.Row():
-                        with gr.Accordion('Text To Speech', open=False):
+                        with gr.Accordion(i18n('Text To Speech'), open=False):
                             with gr.Column():
-                                lang = gr.Radio(label='Chinese & Japanese do not work with ElevenLabs currently.',choices=['en','es','fr','pt','zh-CN','de','hi','ja'], value='en')
-                                api_box = gr.Textbox(label="Enter your API Key for ElevenLabs, or leave empty to use GoogleTTS", value='')
-                                elevenid=gr.Dropdown(label="Voice:", choices=eleven_voices)
+                                lang = gr.Radio(label=i18n('Chinese & Japanese do not work with ElevenLabs currently.'),choices=['en','es','fr','pt','zh-CN','de','hi','ja'], value='en')
+                                api_box = gr.Textbox(label=i18n("Enter your API Key for ElevenLabs, or leave empty to use GoogleTTS"), value='')
+                                elevenid=gr.Dropdown(label=i18n("Voice:"), choices=eleven_voices)
                             with gr.Column():
-                                tfs = gr.Textbox(label="Input your Text", interactive=True, value="This is a test.")
-                                tts_button = gr.Button(value="Speak")
+                                tfs = gr.Textbox(label=i18n("Input your Text"), interactive=True, value=i18n("This is a test."))
+                                tts_button = gr.Button(value=i18n("Speak"))
                                 tts_button.click(fn=elevenTTS, inputs=[api_box,tfs, elevenid, lang], outputs=[record_button, input_audio0])
                     with gr.Row():
-                        with gr.Accordion('Wav2Lip', open=False):
+                        with gr.Accordion(i18n('Wav2Lip'), open=False):
                             with gr.Row():
-                                size = gr.Radio(label='Resolution:',choices=['Half','Full'])
-                                face = gr.UploadButton("Upload A Character",type='file')
-                                faces = gr.Dropdown(label="OR Choose one:", choices=['None','Ben Shapiro','Andrew Tate'])
+                                size = gr.Radio(label=i18n('Resolution:'),choices=[i18n('Half'),i18n('Full')])
+                                face = gr.UploadButton(i18n("Upload A Character"),type='file')
+                                faces = gr.Dropdown(label=i18n("OR Choose one:"), choices=['None','Ben Shapiro','Andrew Tate'])
                             with gr.Row():
-                                preview = gr.Textbox(label="Status:",interactive=False)
+                                preview = gr.Textbox(label=i18n("Status:"),interactive=False)
                                 face.upload(fn=success_message,inputs=[face], outputs=[preview, faces])
                             with gr.Row():
                                 animation = gr.Video(type='filepath')
                                 refresh_button2.click(fn=change_choices2, inputs=[], outputs=[input_audio0, animation])
                             with gr.Row():
-                                animate_button = gr.Button('Animate')
+                                animate_button = gr.Button(i18n('Animate'))
 
                 with gr.Column():
-                    with gr.Accordion("Index Settings", open=False):
+                    with gr.Accordion(i18n("Index Settings"), open=False):
                         file_index1 = gr.Dropdown(
-                            label="3. Path to your added.index file (if it didn't automatically find it.)",
+                            label=i18n("3. Path to your added.index file (if it didn't automatically find it.)"),
                             choices=get_indexes(),
                             value=get_index(),
                             interactive=True,
@@ -2014,11 +2014,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value=0.66,
                             interactive=True,
                             )
-                    vc_output2 = gr.Audio(label="Output Audio (Click on the Three Dots in the Right Corner to Download)",type='filepath',interactive=False)
+                    vc_output2 = gr.Audio(label=i18n("Output Audio (Click on the Three Dots in the Right Corner to Download)"),type='filepath',interactive=False)
                     animate_button.click(fn=mouth, inputs=[size, face, vc_output2, faces], outputs=[animation, preview])
-                    with gr.Accordion("Advanced Settings", open=False):
+                    with gr.Accordion(i18n("Advanced Settings"), open=False):
                         f0method0 = gr.Radio(
-                            label="Optional: Change the Pitch Extraction Algorithm.\nExtraction methods are sorted from 'worst quality' to 'best quality'.\nmangio-crepe may or may not be better than rmvpe in cases where 'smoothness' is more important, but rmvpe is the best overall.",
+                            label=i18n("Optional: Change the Pitch Extraction Algorithm.\nExtraction methods are sorted from 'worst quality' to 'best quality'.\nmangio-crepe may or may not be better than rmvpe in cases where 'smoothness' is more important, but rmvpe is the best overall."),
                             choices=["pm", "dio", "crepe-tiny", "mangio-crepe-tiny", "crepe", "harvest", "mangio-crepe", "rmvpe"], # Fork Feature. Add Crepe-Tiny
                             value="rmvpe",
                             interactive=True,
@@ -2028,7 +2028,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             minimum=1,
                             maximum=512,
                             step=1,
-                            label="Mangio-Crepe Hop Length. Higher numbers will reduce the chance of extreme pitch changes but lower numbers will increase accuracy. 64-192 is a good range to experiment with.",
+                            label=i18n("Mangio-Crepe Hop Length. Higher numbers will reduce the chance of extreme pitch changes but lower numbers will increase accuracy. 64-192 is a good range to experiment with."),
                             value=120,
                             interactive=True,
                             visible=False,
@@ -2068,8 +2068,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             )
                         formanting = gr.Checkbox(
                             value=bool(DoFormant),
-                            label="[EXPERIMENTAL] Formant shift inference audio",
-                            info="Used for male to female and vice-versa conversions",
+                            label=i18n("[EXPERIMENTAL] Formant shift inference audio"),
+                            info=i18n("Used for male to female and vice-versa conversions"),
                             interactive=True,
                             visible=True,
                         )
@@ -2077,7 +2077,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         formant_preset = gr.Dropdown(
                             value='',
                             choices=get_fshift_presets(),
-                            label="browse presets for formanting",
+                            label=i18n("browse presets for formanting"),
                             visible=bool(DoFormant),
                         )
                         formant_refresh_button = gr.Button(
@@ -2090,8 +2090,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         
                         qfrency = gr.Slider(
                                 value=Quefrency,
-                                info="Default value is 1.0",
-                                label="Quefrency for formant shifting",
+                                info=i18n("Default value is 1.0"),
+                                label=i18n("Quefrency for formant shifting"),
                                 minimum=0.0,
                                 maximum=16.0,
                                 step=0.1,
@@ -2100,8 +2100,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             )
                         tmbre = gr.Slider(
                             value=Timbre,
-                            info="Default value is 1.0",
-                            label="Timbre for formant shifting",
+                            info=i18n("Default value is 1.0"),
+                            label=i18n("Timbre for formant shifting"),
                             minimum=0.0,
                             maximum=16.0,
                             step=0.1,
@@ -2110,7 +2110,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         )
                         
                         formant_preset.change(fn=preset_apply, inputs=[formant_preset, qfrency, tmbre], outputs=[qfrency, tmbre])
-                        frmntbut = gr.Button("Apply", variant="primary", visible=bool(DoFormant))
+                        frmntbut = gr.Button(i18n("Apply"), variant="primary", visible=bool(DoFormant))
                         formanting.change(fn=formant_enabled,inputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button],outputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button])
                         frmntbut.click(fn=formant_apply,inputs=[qfrency, tmbre], outputs=[qfrency, tmbre])
                         formant_refresh_button.click(fn=update_fshift_presets,inputs=[formant_preset, qfrency, tmbre],outputs=[formant_preset, qfrency, tmbre])
@@ -2139,7 +2139,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                     [vc_output1, vc_output2],
                 )
                         
-            with gr.Accordion("Batch Conversion",open=False):
+            with gr.Accordion(i18n("Batch Conversion"),open=False):
                 with gr.Row():
                     with gr.Column():
                         vc_transform1 = gr.Number(
@@ -2256,24 +2256,24 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         [vc_output3],
                     )
                     but1.click(fn=lambda: easy_uploader.clear())
-        with gr.TabItem("Download Model"):
+        with gr.TabItem(i18n("Download Model")):
             with gr.Row():
-                url=gr.Textbox(label="Enter the URL to the Model:")
+                url=gr.Textbox(label=i18n("Enter the URL to the Model:"))
             with gr.Row():
-                model = gr.Textbox(label="Name your model:")
-                download_button=gr.Button("Download")
+                model = gr.Textbox(label=i18n("Name your model:"))
+                download_button=gr.Button(i18n("Download"))
             with gr.Row():
                 status_bar=gr.Textbox(label="")
                 download_button.click(fn=download_from_url, inputs=[url, model], outputs=[status_bar])
             with gr.Row():
                 gr.Markdown(
-                """
+                i18n("""
                 Original RVC:https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI
                 Mangio's RVC Fork:https://github.com/Mangio621/Mangio-RVC-Fork
                 ❤️ If you like the EasyGUI, help me keep it.❤️ 
                 https://paypal.me/lesantillan
                 """
-                )
+                ))
                 
         def has_two_files_in_pretrained_folder():
             pretrained_folder = "./pretrained/"
@@ -2286,10 +2286,10 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
 
         if has_two_files_in_pretrained_folder():    
             print("Pretrained weights are downloaded. Training tab enabled!\n-------------------------------")       
-            with gr.TabItem("Train", visible=False):
+            with gr.TabItem(i18n("Train"), visible=False):
                 with gr.Row():
                     with gr.Column():
-                        exp_dir1 = gr.Textbox(label="Voice Name:", value="My-Voice")
+                        exp_dir1 = gr.Textbox(label=i18n("Voice Name:"), value=i18n("My-Voice"))
                         sr2 = gr.Radio(
                             label=i18n("目标采样率"),
                             choices=["40k", "48k"],
@@ -2305,7 +2305,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             visible=False
                         )
                         version19 = gr.Radio(
-                            label="RVC version",
+                            label=i18n("RVC version"),
                             choices=["v1", "v2"],
                             value="v2",
                             interactive=True,
@@ -2315,15 +2315,15 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             minimum=0,
                             maximum=config.n_cpu,
                             step=1,
-                            label="# of CPUs for data processing (Leave as it is)",
+                            label=i18n("# of CPUs for data processing (Leave as it is)"),
                             value=config.n_cpu,
                             interactive=True,
                             visible=True
                         )
-                        trainset_dir4 = gr.Textbox(label="Path to your dataset (audios, not zip):", value="./dataset")
-                        easy_uploader = gr.Files(label='OR Drop your audios here. They will be uploaded in your dataset path above.',file_types=['audio'])
-                        but1 = gr.Button("1. Process The Dataset", variant="primary")
-                        info1 = gr.Textbox(label="Status (wait until it says 'end preprocess'):", value="")
+                        trainset_dir4 = gr.Textbox(label=i18n("Path to your dataset (audios, not zip):"), value="./dataset")
+                        easy_uploader = gr.Files(label=i18n('OR Drop your audios here. They will be uploaded in your dataset path above.'),file_types=['audio'])
+                        but1 = gr.Button(i18n("1. Process The Dataset"), variant="primary")
+                        info1 = gr.Textbox(label=i18n("Status (wait until it says 'end preprocess'):"), value="")
                         easy_uploader.upload(fn=upload_to_dataset, inputs=[easy_uploader, trainset_dir4], outputs=[info1])
                         but1.click(
                             preprocess_dataset, [trainset_dir4, exp_dir1, sr2, np7], [info1]
@@ -2338,7 +2338,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             interactive=True,
                             visible=False
                         )
-                        with gr.Accordion('GPU Settings', open=False, visible=False):
+                        with gr.Accordion(i18n('GPU Settings'), open=False, visible=False):
                             gpus6 = gr.Textbox(
                                 label=i18n("以-分隔输入使用的卡号, 例如   0-1-2   使用卡0和卡1和卡2"),
                                 value=gpus,
@@ -2365,8 +2365,8 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             visible=False,
                         )
                         f0method8.change(fn=whethercrepeornah, inputs=[f0method8], outputs=[extraction_crepe_hop_length])
-                        but2 = gr.Button("2. Pitch Extraction", variant="primary")
-                        info2 = gr.Textbox(label="Status(Check the Colab Notebook's cell output):", value="", max_lines=8)
+                        but2 = gr.Button(i18n("2. Pitch Extraction"), variant="primary")
+                        info2 = gr.Textbox(label=i18n("Status(Check the Colab Notebook's cell output):"), value="", max_lines=8)
                         but2.click(
                                 extract_f0_feature,
                                 [gpus6, np7, f0method8, if_f0_3, exp_dir1, version19, extraction_crepe_hop_length],
@@ -2378,7 +2378,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                 minimum=1,
                                 maximum=5000,
                                 step=10,
-                                label="Total # of training epochs (IF you choose a value too high, your model will sound horribly overtrained.):",
+                                label=i18n("Total # of training epochs (IF you choose a value too high, your model will sound horribly overtrained.):"),
                                 value=250,
                                 interactive=True,
                             )
@@ -2387,22 +2387,22 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                 variant='primary',
                                 visible=False,
                             )
-                            but3 = gr.Button("3. Train Model", variant="primary", visible=True)
+                            but3 = gr.Button(i18n("3. Train Model"), variant="primary", visible=True)
                             
                             but3.click(fn=stoptraining, inputs=[gr.Number(value=0, visible=False)], outputs=[but3, butstop])
                             butstop.click(fn=stoptraining, inputs=[gr.Number(value=1, visible=False)], outputs=[butstop, but3])
                             
                             
-                            but4 = gr.Button("4.Train Index", variant="primary")
-                            info3 = gr.Textbox(label="Status(Check the Colab Notebook's cell output):", value="", max_lines=10)
-                            with gr.Accordion("Training Preferences (You can leave these as they are)", open=False):
+                            but4 = gr.Button(i18n("4.Train Index"), variant="primary")
+                            info3 = gr.Textbox(label=i18n("Status(Check the Colab Notebook's cell output):"), value="", max_lines=10)
+                            with gr.Accordion(i18n("Training Preferences (You can leave these as they are)"), open=False):
                                 #gr.Markdown(value=i18n("step3: 填写训练设置, 开始训练模型和索引"))
                                 with gr.Column():
                                     save_epoch10 = gr.Slider(
                                         minimum=1,
                                         maximum=200,
                                         step=1,
-                                        label="Backup every X amount of epochs:",
+                                        label=i18n("Backup every X amount of epochs:"),
                                         value=10,
                                         interactive=True,
                                     )
@@ -2410,7 +2410,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                         minimum=1,
                                         maximum=40,
                                         step=1,
-                                        label="Batch Size (LEAVE IT unless you know what you're doing!):",
+                                        label=i18n("Batch Size (LEAVE IT unless you know what you're doing!):"),
                                         value=default_batch_size,
                                         interactive=True,
                                     )
@@ -2429,11 +2429,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                                         value=True,
                                         interactive=True,
                                     )
-                            zip_model = gr.Button('5. Download Model')
-                            zipped_model = gr.Files(label='Your Model and Index file can be downloaded here:')
+                            zip_model = gr.Button(i18n('5. Download Model'))
+                            zipped_model = gr.Files(label=i18n('Your Model and Index file can be downloaded here:'))
                             zip_model.click(fn=zip_downloader, inputs=[exp_dir1], outputs=[zipped_model, info3])
                 with gr.Group():
-                    with gr.Accordion("Base Model Locations:", open=False, visible=False):
+                    with gr.Accordion(i18n("Base Model Locations:"), open=False, visible=False):
                         pretrained_G14 = gr.Textbox(
                             label=i18n("加载预训练底模G路径"),
                             value="pretrained_v2/f0G40k.pth",
@@ -2556,20 +2556,20 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
         with open('../inference-presets.json', 'w') as file:
             json.dump(data, file)
             file.flush()
-        print("Saved Preset %s into inference-presets.json!" % preset_name)
+        print(i18n("Saved Preset %s into inference-presets.json!") % preset_name)
 
 
     def on_preset_changed(preset_name):
-        print("Changed Preset to %s!" % preset_name)
+        print(i18n("Changed Preset to %s!") % preset_name)
         data = None
         with open('../inference-presets.json', 'r') as file:
             data = json.load(file)
 
-        print("Searching for " + preset_name)
+        print(i18n("Searching for ") + preset_name)
         returning_preset = None
         for preset in data['presets']:
             if(preset['name'] == preset_name):
-                print("Found a preset")
+                print(i18n("Found a preset"))
                 returning_preset = preset
         # return all new input values
         return (
