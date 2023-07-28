@@ -26,57 +26,25 @@ import ffmpeg
 import signal
 
 import math
-import sqlite3
-
-conn = sqlite3.connect('TEMP/db:cachedb?mode=memory&cache=shared', check_same_thread=False)
-cursor = conn.cursor()
-
-
-
-
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS formant_data (
-        Quefrency FLOAT,
-        Timbre FLOAT,
-        DoFormant INTEGER
-    )
-""")
-
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS stop_train (
-        stop BOOL
-    )
-""")
-
-def clear_sql(signal, frame):
-    cursor.execute("DELETE FROM formant_data")
-    cursor.execute("DELETE FROM stop_train")
-    conn.commit()
-    conn.close()
-    print("Clearing SQL database...")
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, clear_sql)
-signal.signal(signal.SIGTERM, clear_sql)
+import csv
+from my_utils import load_audio, CSVutil
 
 global DoFormant, Quefrency, Timbre
 
+if not os.path.isdir('csvdb/'):
+    os.makedirs('csvdb')
+    frmnt, stp = open("csvdb/formanting.csv", 'w'), open("csvdb/stop.csv", 'w')
+    frmnt.close()
+    stp.close()
+
 try:
-    cursor.execute("SELECT Quefrency, Timbre, DoFormant FROM formant_data")
-    row = cursor.fetchone()
-    if row is not None:
-        Quefrency, Timbre, DoFormant = row
-    else:
-        raise ValueError("No data")
-    
-except (ValueError, TypeError):
-    Quefrency = 8.0
-    Timbre = 1.2
-    DoFormant = False
-    cursor.execute("DELETE FROM formant_data")
-    cursor.execute("DELETE FROM stop_train")
-    cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (Quefrency, Timbre, 0))
-    conn.commit()
+    DoFormant, Quefrency, Timbre = CSVutil('csvdb/formanting.csv', 'r', 'formanting')
+    DoFormant = (
+        lambda DoFormant: True if DoFormant.lower() == 'true' else (False if DoFormant.lower() == 'false' else DoFormant)
+    )(DoFormant)
+except (ValueError, TypeError, IndexError):
+    DoFormant, Quefrency, Timbre = False, 1.0, 1.0
+    CSVutil('csvdb/formanting.csv', 'w+', 'formanting', DoFormant, Quefrency, Timbre)
 
 #from MDXNet import MDXNetDereverb
 
@@ -113,9 +81,7 @@ def formant_apply(qfrency, tmbre):
     Quefrency = qfrency
     Timbre = tmbre
     DoFormant = True
-    cursor.execute("DELETE FROM formant_data")
-    cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, 1))
-    conn.commit()
+    CSVutil('csvdb/formanting.csv', 'w+', 'formanting', DoFormant, qfrency, tmbre)
     
     return ({"value": Quefrency, "__type__": "update"}, {"value": Timbre, "__type__": "update"})
 
@@ -138,9 +104,7 @@ def formant_enabled(cbox, qfrency, tmbre, frmntapply, formantpreset, formant_ref
     if (cbox):
 
         DoFormant = True
-        cursor.execute("DELETE FROM formant_data")
-        cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, 1))
-        conn.commit()
+        CSVutil('csvdb/formanting.csv', 'w+', 'formanting', DoFormant, qfrency, tmbre)
         #print(f"is checked? - {cbox}\ngot {DoFormant}")
         
         return (
@@ -156,9 +120,7 @@ def formant_enabled(cbox, qfrency, tmbre, frmntapply, formantpreset, formant_ref
     else:
         
         DoFormant = False
-        cursor.execute("DELETE FROM formant_data")
-        cursor.execute("INSERT INTO formant_data (Quefrency, Timbre, DoFormant) VALUES (?, ?, ?)", (qfrency, tmbre, int(DoFormant)))
-        conn.commit()
+        CSVutil('csvdb/formanting.csv', 'w+', 'formanting', DoFormant, qfrency, tmbre)
         
         #print(f"is checked? - {cbox}\ngot {DoFormant}")
         return (
@@ -264,7 +226,6 @@ import logging
 from vc_infer_pipeline import VC
 from config import Config
 from infer_uvr5 import _audio_pre_, _audio_pre_new
-from my_utils import load_audio
 from train.process_ckpt import show_info, change_info, merge, extract_small_model
 
 config = Config()
@@ -695,7 +656,6 @@ def preprocess_dataset(trainset_dir, exp_dir, sr, n_p):
     print(log)
     yield log
 
-
 # but2.click(extract_f0,[gpus6,np7,f0method8,if_f0_3,trainset_dir4],[info2])
 def extract_f0_feature(gpus, n_p, f0method, if_f0, exp_dir, version19, echl):
     gpus = gpus.split("-")
@@ -868,8 +828,7 @@ def click_train(
     if_save_every_weights18,
     version19,
 ):
-    cursor.execute("DELETE FROM stop_train")
-    conn.commit()
+    CSVutil('csvdb/stop.csv', 'w+', 'formanting', False)
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
@@ -1370,305 +1329,6 @@ def export_onnx(ModelPath, ExportedPath, MoeVS=True):
     )
     return "Finished"
 
-
-#region Mangio-RVC-Fork CLI App
-import re as regex
-import scipy.io.wavfile as wavfile
-
-cli_current_page = "HOME"
-
-def cli_split_command(com):
-    exp = r'(?:(?<=\s)|^)"(.*?)"(?=\s|$)|(\S+)'
-    split_array = regex.findall(exp, com)
-    split_array = [group[0] if group[0] else group[1] for group in split_array]
-    return split_array
-
-def execute_generator_function(genObject):
-    for _ in genObject: pass
-
-def cli_infer(com):
-    # get VC first
-    com = cli_split_command(com)
-    model_name = com[0]
-    source_audio_path = com[1]
-    output_file_name = com[2]
-    feature_index_path = com[3]
-    f0_file = None # Not Implemented Yet
-
-    # Get parameters for inference
-    speaker_id = int(com[4])
-    transposition = float(com[5])
-    f0_method = com[6]
-    crepe_hop_length = int(com[7])
-    harvest_median_filter = int(com[8])
-    resample = int(com[9])
-    mix = float(com[10])
-    feature_ratio = float(com[11])
-    protection_amnt = float(com[12])
-
-    print("Mangio-RVC-Fork Infer-CLI: Starting the inference...")
-    vc_data = get_vc(model_name)
-    print(vc_data)
-    print("Mangio-RVC-Fork Infer-CLI: Performing inference...")
-    conversion_data = vc_single(
-        speaker_id,
-        source_audio_path,
-        transposition,
-        f0_file,
-        f0_method,
-        feature_index_path,
-        #feature_index_path,
-        feature_ratio,
-        harvest_median_filter,
-        resample,
-        mix,
-        protection_amnt,
-        crepe_hop_length,        
-    )
-    if "Success." in conversion_data[0]:
-        print("Mangio-RVC-Fork Infer-CLI: Inference succeeded. Writing to %s/%s..." % ('audio-outputs', output_file_name))
-        wavfile.write('%s/%s' % ('audio-outputs', output_file_name), conversion_data[1][0], conversion_data[1][1])
-        print("Mangio-RVC-Fork Infer-CLI: Finished! Saved output to %s/%s" % ('audio-outputs', output_file_name))
-    else:
-        print("Mangio-RVC-Fork Infer-CLI: Inference failed. Here's the traceback: ")
-        print(conversion_data[0])
-
-def cli_pre_process(com):
-    com = cli_split_command(com)
-    model_name = com[0]
-    trainset_directory = com[1]
-    sample_rate = com[2]
-    num_processes = int(com[3])
-
-    print("Mangio-RVC-Fork Pre-process: Starting...")
-    generator = preprocess_dataset(
-        trainset_directory, 
-        model_name, 
-        sample_rate, 
-        num_processes
-    )
-    execute_generator_function(generator)
-    print("Mangio-RVC-Fork Pre-process: Finished")
-
-def cli_extract_feature(com):
-    com = cli_split_command(com)
-    model_name = com[0]
-    gpus = com[1]
-    num_processes = int(com[2])
-    has_pitch_guidance = True if (int(com[3]) == 1) else False
-    f0_method = com[4]
-    crepe_hop_length = int(com[5])
-    version = com[6] # v1 or v2
-    
-    print("Mangio-RVC-CLI: Extract Feature Has Pitch: " + str(has_pitch_guidance))
-    print("Mangio-RVC-CLI: Extract Feature Version: " + str(version))
-    print("Mangio-RVC-Fork Feature Extraction: Starting...")
-    generator = extract_f0_feature(
-        gpus, 
-        num_processes, 
-        f0_method, 
-        has_pitch_guidance, 
-        model_name, 
-        version, 
-        crepe_hop_length
-    )
-    execute_generator_function(generator)
-    print("Mangio-RVC-Fork Feature Extraction: Finished")
-
-def cli_train(com):
-    com = cli_split_command(com)
-    model_name = com[0]
-    sample_rate = com[1]
-    has_pitch_guidance = True if (int(com[2]) == 1) else False
-    speaker_id = int(com[3])
-    save_epoch_iteration = int(com[4])
-    total_epoch = int(com[5]) # 10000
-    batch_size = int(com[6])
-    gpu_card_slot_numbers = com[7]
-    if_save_latest = True if (int(com[8]) == 1) else False
-    if_cache_gpu = True if (int(com[9]) == 1) else False
-    if_save_every_weight = True if (int(com[10]) == 1) else False
-    version = com[11]
-
-    pretrained_base = "pretrained/" if version == "v1" else "pretrained_v2/" 
-    
-    g_pretrained_path = "%sf0G%s.pth" % (pretrained_base, sample_rate)
-    d_pretrained_path = "%sf0D%s.pth" % (pretrained_base, sample_rate)
-
-    print("Mangio-RVC-Fork Train-CLI: Training...")
-    click_train(
-        model_name,
-        sample_rate,
-        has_pitch_guidance,
-        speaker_id,
-        save_epoch_iteration,
-        total_epoch,
-        batch_size,
-        if_save_latest,
-        g_pretrained_path,
-        d_pretrained_path,
-        gpu_card_slot_numbers,
-        if_cache_gpu,
-        if_save_every_weight,
-        version
-    )
-
-def cli_train_feature(com):
-    com = cli_split_command(com)
-    model_name = com[0]
-    version = com[1]
-    print("Mangio-RVC-Fork Train Feature Index-CLI: Training... Please wait")
-    generator = train_index(
-        model_name,
-        version
-    )
-    execute_generator_function(generator)
-    print("Mangio-RVC-Fork Train Feature Index-CLI: Done!")
-
-def cli_extract_model(com):
-    com = cli_split_command(com)
-    model_path = com[0]
-    save_name = com[1]
-    sample_rate = com[2]
-    has_pitch_guidance = com[3]
-    info = com[4]
-    version = com[5]
-    extract_small_model_process = extract_small_model(
-        model_path,
-        save_name,
-        sample_rate,
-        has_pitch_guidance,
-        info,
-        version
-    )
-    if extract_small_model_process == "Success.":
-        print("Mangio-RVC-Fork Extract Small Model: Success!")
-    else:
-        print(str(extract_small_model_process))        
-        print("Mangio-RVC-Fork Extract Small Model: Failed!")
-
-def print_page_details():
-    if cli_current_page == "HOME":
-        print("    go home            : Takes you back to home with a navigation list.")
-        print("    go infer           : Takes you to inference command execution.\n")
-        print("    go pre-process     : Takes you to training step.1) pre-process command execution.")
-        print("    go extract-feature : Takes you to training step.2) extract-feature command execution.")
-        print("    go train           : Takes you to training step.3) being or continue training command execution.")
-        print("    go train-feature   : Takes you to the train feature index command execution.\n")
-        print("    go extract-model   : Takes you to the extract small model command execution.")
-    elif cli_current_page == "INFER":
-        print("    arg 1) model name with .pth in ./weights: mi-test.pth")
-        print("    arg 2) source audio path: myFolder\\MySource.wav")
-        print("    arg 3) output file name to be placed in './audio-outputs': MyTest.wav")
-        print("    arg 4) feature index file path: logs/mi-test/added_IVF3042_Flat_nprobe_1.index")
-        print("    arg 5) speaker id: 0")
-        print("    arg 6) transposition: 0")
-        print("    arg 7) f0 method: harvest (pm, harvest, crepe, crepe-tiny, hybrid[x,x,x,x], mangio-crepe, mangio-crepe-tiny)")
-        print("    arg 8) crepe hop length: 160")
-        print("    arg 9) harvest median filter radius: 3 (0-7)")
-        print("    arg 10) post resample rate: 0")
-        print("    arg 11) mix volume envelope: 1")
-        print("    arg 12) feature index ratio: 0.78 (0-1)")
-        print("    arg 13) Voiceless Consonant Protection (Less Artifact): 0.33 (Smaller number = more protection. 0.50 means Dont Use.) \n")
-        print("Example: mi-test.pth saudio/Sidney.wav myTest.wav logs/mi-test/added_index.index 0 -2 harvest 160 3 0 1 0.95 0.33")
-    elif cli_current_page == "PRE-PROCESS":
-        print("    arg 1) Model folder name in ./logs: mi-test")
-        print("    arg 2) Trainset directory: mydataset (or) E:\\my-data-set")
-        print("    arg 3) Sample rate: 40k (32k, 40k, 48k)")
-        print("    arg 4) Number of CPU threads to use: 8 \n")
-        print("Example: mi-test mydataset 40k 24")
-    elif cli_current_page == "EXTRACT-FEATURE":
-        print("    arg 1) Model folder name in ./logs: mi-test")
-        print("    arg 2) Gpu card slot: 0 (0-1-2 if using 3 GPUs)")
-        print("    arg 3) Number of CPU threads to use: 8")
-        print("    arg 4) Has Pitch Guidance?: 1 (0 for no, 1 for yes)")
-        print("    arg 5) f0 Method: harvest (pm, harvest, dio, crepe)")
-        print("    arg 6) Crepe hop length: 128")
-        print("    arg 7) Version for pre-trained models: v2 (use either v1 or v2)\n")
-        print("Example: mi-test 0 24 1 harvest 128 v2")
-    elif cli_current_page == "TRAIN":
-        print("    arg 1) Model folder name in ./logs: mi-test")
-        print("    arg 2) Sample rate: 40k (32k, 40k, 48k)")
-        print("    arg 3) Has Pitch Guidance?: 1 (0 for no, 1 for yes)")
-        print("    arg 4) speaker id: 0")
-        print("    arg 5) Save epoch iteration: 50")
-        print("    arg 6) Total epochs: 10000")
-        print("    arg 7) Batch size: 8")
-        print("    arg 8) Gpu card slot: 0 (0-1-2 if using 3 GPUs)")
-        print("    arg 9) Save only the latest checkpoint: 0 (0 for no, 1 for yes)")
-        print("    arg 10) Whether to cache training set to vram: 0 (0 for no, 1 for yes)")
-        print("    arg 11) Save extracted small model every generation?: 0 (0 for no, 1 for yes)")
-        print("    arg 12) Model architecture version: v2 (use either v1 or v2)\n")
-        print("Example: mi-test 40k 1 0 50 10000 8 0 0 0 0 v2")
-    elif cli_current_page == "TRAIN-FEATURE":
-        print("    arg 1) Model folder name in ./logs: mi-test")
-        print("    arg 2) Model architecture version: v2 (use either v1 or v2)\n")
-        print("Example: mi-test v2")
-    elif cli_current_page == "EXTRACT-MODEL":
-        print("    arg 1) Model Path: logs/mi-test/G_168000.pth")
-        print("    arg 2) Model save name: MyModel")
-        print("    arg 3) Sample rate: 40k (32k, 40k, 48k)")
-        print("    arg 4) Has Pitch Guidance?: 1 (0 for no, 1 for yes)")
-        print('    arg 5) Model information: "My Model"')
-        print("    arg 6) Model architecture version: v2 (use either v1 or v2)\n")
-        print('Example: logs/mi-test/G_168000.pth MyModel 40k 1 "Created by Cole Mangio" v2')
-    print("")
-
-def change_page(page):
-    global cli_current_page
-    cli_current_page = page
-    return 0
-
-def execute_command(com):
-    if com == "go home":
-        return change_page("HOME")
-    elif com == "go infer":
-        return change_page("INFER")
-    elif com == "go pre-process":
-        return change_page("PRE-PROCESS")
-    elif com == "go extract-feature":
-        return change_page("EXTRACT-FEATURE")
-    elif com == "go train":
-        return change_page("TRAIN")
-    elif com == "go train-feature":
-        return change_page("TRAIN-FEATURE")
-    elif com == "go extract-model":
-        return change_page("EXTRACT-MODEL")
-    else:
-        if com[:3] == "go ":
-            print("page '%s' does not exist!" % com[3:])
-            return 0
-    
-    if cli_current_page == "INFER":
-        cli_infer(com)
-    elif cli_current_page == "PRE-PROCESS":
-        cli_pre_process(com)
-    elif cli_current_page == "EXTRACT-FEATURE":
-        cli_extract_feature(com)
-    elif cli_current_page == "TRAIN":
-        cli_train(com)
-    elif cli_current_page == "TRAIN-FEATURE":
-        cli_train_feature(com)
-    elif cli_current_page == "EXTRACT-MODEL":
-        cli_extract_model(com)
-
-def cli_navigation_loop():
-    while True:
-        print("You are currently in '%s':" % cli_current_page)
-        print_page_details()
-        command = input("%s: " % cli_current_page)
-        try:
-            execute_command(command)
-        except:
-            print(traceback.format_exc())
-
-if(config.is_cli):
-    print("\n\nMangio-RVC-Fork v2 CLI App!\n")
-    print("Welcome to the CLI version of RVC. Please read the documentation on https://github.com/Mangio621/Mangio-RVC-Fork (README.MD) to understand how to use this app.\n")
-    cli_navigation_loop()
-
-#endregion
-
 #region RVC WebUI App
 
 def get_presets():
@@ -1684,14 +1344,14 @@ def get_presets():
 def change_choices2():
     audio_files=[]
     for filename in os.listdir("./audios"):
-        if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
-            audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
+        if filename.endswith(('.wav','.mp3')):
+            audio_files.append(os.path.join('./audios',filename))
     return {"choices": sorted(audio_files), "__type__": "update"}, {"__type__": "update"}
     
 audio_files=[]
 for filename in os.listdir("./audios"):
-    if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
-        audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
+    if filename.endswith(('.wav','.mp3')):
+        audio_files.append(os.path.join('./audios',filename))
         
 def get_index():
     if check_for_name() != '':
@@ -1826,19 +1486,11 @@ chosen_voice = dict(zip(eleven_voices, eleven_voices_ids))
 
 def stoptraining(mim): 
     if int(mim) == 1:
-        
-        cursor.execute("INSERT INTO stop_train (stop) VALUES (?)", (True,))
-        conn.commit()
-        #p.terminate()
-        #p.kill()
         try:
+            CSVutil('csvdb/stop.csv', 'w+', 'stop', 'True')
             os.kill(PID, signal.SIGTERM)
         except Exception as e:
             print(f"Couldn't click due to {e}")
-            pass
-    else:
-        pass
-    
     return (
         {"visible": False, "__type__": "update"}, 
         {"visible": True, "__type__": "update"},
@@ -1915,7 +1567,7 @@ def zip_downloader(model):
 with gr.Blocks(theme=gr.themes.Base()) as app:
     with gr.Tabs():
         with gr.TabItem("Inference"):
-            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 [With extra features and fixes by kalomaze & alexlnkp]</h1>")
+            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 </h1>")
             # Inference Preset Row
             # with gr.Row():
             #     mangio_preset = gr.Dropdown(label="Inference Preset", choices=sorted(get_presets()))
@@ -2014,7 +1666,7 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value=0.66,
                             interactive=True,
                             )
-                    vc_output2 = gr.Audio(label="Output Audio (Click on the Three Dots in the Right Corner to Download)",type='filepath',interactive=False)
+                    vc_output2 = gr.Audio(label="Output Audio (Click on the Three Dots in the Right Corner to Download)",type='filepath')
                     animate_button.click(fn=mouth, inputs=[size, face, vc_output2, faces], outputs=[animation, preview])
                     with gr.Accordion("Advanced Settings", open=False):
                         f0method0 = gr.Radio(
@@ -2527,121 +2179,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                 except:
                     gr.Markdown("")
         else:
-            print("Pretrained weights not downloaded. Disabling training tab.")
-            print("Wondering how to train a voice? Visit here for the RVC model training guide: https://t.ly/RVC_Training_Guide")
-            print("-------------------------------\n")
-
-    #region Mangio Preset Handler Region
-    def save_preset(preset_name,sid0,vc_transform,input_audio,f0method,crepe_hop_length,filter_radius,file_index1,file_index2,index_rate,resample_sr,rms_mix_rate,protect,f0_file):
-        data = None
-        with open('../inference-presets.json', 'r') as file:
-            data = json.load(file)
-        preset_json = {
-            'name': preset_name,
-            'model': sid0,
-            'transpose': vc_transform,
-            'audio_file': input_audio,
-            'f0_method': f0method,
-            'crepe_hop_length': crepe_hop_length,
-            'median_filtering': filter_radius,
-            'feature_path': file_index1,
-            'auto_feature_path': file_index2,
-            'search_feature_ratio': index_rate,
-            'resample': resample_sr,
-            'volume_envelope': rms_mix_rate,
-            'protect_voiceless': protect,
-            'f0_file_path': f0_file
-        }
-        data['presets'].append(preset_json)
-        with open('../inference-presets.json', 'w') as file:
-            json.dump(data, file)
-            file.flush()
-        print("Saved Preset %s into inference-presets.json!" % preset_name)
-
-
-    def on_preset_changed(preset_name):
-        print("Changed Preset to %s!" % preset_name)
-        data = None
-        with open('../inference-presets.json', 'r') as file:
-            data = json.load(file)
-
-        print("Searching for " + preset_name)
-        returning_preset = None
-        for preset in data['presets']:
-            if(preset['name'] == preset_name):
-                print("Found a preset")
-                returning_preset = preset
-        # return all new input values
-        return (
-            # returning_preset['model'],
-            # returning_preset['transpose'],
-            # returning_preset['audio_file'],
-            # returning_preset['f0_method'],
-            # returning_preset['crepe_hop_length'],
-            # returning_preset['median_filtering'],
-            # returning_preset['feature_path'],
-            # returning_preset['auto_feature_path'],
-            # returning_preset['search_feature_ratio'],
-            # returning_preset['resample'],
-            # returning_preset['volume_envelope'],
-            # returning_preset['protect_voiceless'],
-            # returning_preset['f0_file_path']
-        )
-
-    # Preset State Changes                
-    
-    # This click calls save_preset that saves the preset into inference-presets.json with the preset name
-    # mangio_preset_save_btn.click(
-    #     fn=save_preset, 
-    #     inputs=[
-    #         mangio_preset_name_save,
-    #         sid0,
-    #         vc_transform0,
-    #         input_audio0,
-    #         f0method0,
-    #         crepe_hop_length,
-    #         filter_radius0,
-    #         file_index1,
-    #         file_index2,
-    #         index_rate1,
-    #         resample_sr0,
-    #         rms_mix_rate0,
-    #         protect0,
-    #         f0_file
-    #     ], 
-    #     outputs=[]
-    # )
-
-    # mangio_preset.change(
-    #     on_preset_changed, 
-    #     inputs=[
-    #         # Pass inputs here
-    #         mangio_preset
-    #     ], 
-    #     outputs=[
-    #         # Pass Outputs here. These refer to the gradio elements that we want to directly change
-    #         # sid0,
-    #         # vc_transform0,
-    #         # input_audio0,
-    #         # f0method0,
-    #         # crepe_hop_length,
-    #         # filter_radius0,
-    #         # file_index1,
-    #         # file_index2,
-    #         # index_rate1,
-    #         # resample_sr0,
-    #         # rms_mix_rate0,
-    #         # protect0,
-    #         # f0_file
-    #     ]
-    # )
-
-
-        # with gr.TabItem(i18n("招募音高曲线前端编辑器")):
-        #     gr.Markdown(value=i18n("加开发群联系我xxxxx"))
-        # with gr.TabItem(i18n("点击查看交流、问题反馈群号")):
-        #     gr.Markdown(value=i18n("xxxxx"))
-
+            print(
+                "Pretrained weights not downloaded. Disabling training tab.\n"
+                "Wondering how to train a voice? Visit here for the RVC model training guide: https://t.ly/RVC_Training_Guide\n"
+                "-------------------------------\n"
+            )
                 
     if config.iscolab or config.paperspace: # Share gradio link for colab and paperspace (FORK FEATURE)
         app.queue(concurrency_count=511, max_size=1022).launch(share=True, quiet=True)
