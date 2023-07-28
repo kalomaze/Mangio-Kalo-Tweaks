@@ -1971,7 +1971,7 @@ def whethercrepeornah(radio):
 
 #Change your Gradio Theme here. 👇 👇 👇 👇 Example: " theme='HaleyCH/HaleyCH_Theme' "
 with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
-    gr.HTML("<h1> The Mangio-RVC-Fork 💻 </h1>")
+    gr.HTML(i18n("<h1> The Mangio-RVC-Fork 💻 </h1>"))
     gr.Markdown(
         value=i18n(
             "本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>使用需遵守的协议-LICENSE.txt</b>."
@@ -2063,7 +2063,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         )
                         
                         file_index2 = gr.Dropdown(
-                            label="3. Path to your added.index file (if it didn't automatically find it.)",
+                            label=i18n("3. Path to your added.index file (if it didn't automatically find it.)"),
                             choices=get_indexes(),
                             value=get_index(),
                             interactive=True,
@@ -2126,7 +2126,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         formant_preset = gr.Dropdown(
                             value='',
                             choices=get_fshift_presets(),
-                            label="browse presets for formanting",
+                            label=i18n("browse presets for formanting"),
                             visible=bool(DoFormant),
                         )
                         
@@ -2138,8 +2138,8 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         
                         qfrency = gr.Slider(
                                 value=Quefrency,
-                                info="Default value is 1.0",
-                                label="Quefrency for formant shifting",
+                                info=i18n("Default value is 1.0"),
+                                label=i18n("Quefrency for formant shifting"),
                                 minimum=0.0,
                                 maximum=16.0,
                                 step=0.1,
@@ -2149,8 +2149,8 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                             
                         tmbre = gr.Slider(
                             value=Timbre,
-                            info="Default value is 1.0",
-                            label="Timbre for formant shifting",
+                            info=i18n("Default value is 1.0"),
+                            label=i18n("Timbre for formant shifting"),
                             minimum=0.0,
                             maximum=16.0,
                             step=0.1,
@@ -2159,7 +2159,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         )
                         
                         formant_preset.change(fn=preset_apply, inputs=[formant_preset, qfrency, tmbre], outputs=[qfrency, tmbre])
-                        frmntbut = gr.Button("Apply", variant="primary", visible=bool(DoFormant))
+                        frmntbut = gr.Button(i18n("Apply"), variant="primary", visible=bool(DoFormant))
                         formanting.change(fn=formant_enabled,inputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button],outputs=[formanting,qfrency,tmbre,frmntbut,formant_preset,formant_refresh_button])
                         frmntbut.click(fn=formant_apply,inputs=[qfrency, tmbre], outputs=[qfrency, tmbre])
                         formant_refresh_button.click(fn=update_fshift_presets,inputs=[formant_preset, qfrency, tmbre],outputs=[formant_preset, qfrency, tmbre])
@@ -2398,7 +2398,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                     interactive=True,
                 )
                 if_f0_3 = gr.Checkbox(
-                    label="Whether the model has pitch guidance.",
+                    label=i18n("Whether the model has pitch guidance."),
                     value=True,
                     interactive=True,
                 )
@@ -2507,17 +2507,17 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         interactive=True,
                     )
                     if_save_latest13 = gr.Checkbox(
-                        label="Whether to save only the latest .ckpt file to save hard drive space",
+                        label=i18n("Whether to save only the latest .ckpt file to save hard drive space"),
                         value=True,
                         interactive=True,
                     )
                     if_cache_gpu17 = gr.Checkbox(
-                        label="Cache all training sets to GPU memory. Caching small datasets (less than 10 minutes) can speed up training, but caching large datasets will consume a lot of GPU memory and may not provide much speed improvement",
+                        label=i18n("Cache all training sets to GPU memory. Caching small datasets (less than 10 minutes) can speed up training, but caching large datasets will consume a lot of GPU memory and may not provide much speed improvement"),
                         value=False,
                         interactive=True,
                     )
                     if_save_every_weights18 = gr.Checkbox(
-                        label="Save a small final model to the 'weights' folder at each save point",
+                        label=i18n("Save a small final model to the 'weights' folder at each save point"),
                         value=True,
                         interactive=True,
                     )
@@ -2626,8 +2626,8 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
             with gr.Group():
                 gr.Markdown(value=i18n("模型融合, 可用于测试音色融合"))
                 with gr.Row():
-                    ckpt_a = gr.Textbox(label=i18n("A模型路径"), value="", interactive=True, placeholder="Path to your model A.")
-                    ckpt_b = gr.Textbox(label=i18n("B模型路径"), value="", interactive=True, placeholder="Path to your model B.")
+                    ckpt_a = gr.Textbox(label=i18n("A模型路径"), value="", interactive=True, placeholder=i18n("Path to your model A."))
+                    ckpt_b = gr.Textbox(label=i18n("B模型路径"), value="", interactive=True, placeholder=i18n("Path to your model B."))
                     alpha_a = gr.Slider(
                         minimum=0,
                         maximum=1,
@@ -2643,17 +2643,17 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         interactive=True,
                     )
                     if_f0_ = gr.Checkbox(
-                        label="Whether the model has pitch guidance.",
+                        label=i18n("Whether the model has pitch guidance."),
                         value=True,
                         interactive=True,
                     )
                     info__ = gr.Textbox(
-                        label=i18n("要置入的模型信息"), value="", max_lines=8, interactive=True, placeholder="Model information to be placed."
+                        label=i18n("要置入的模型信息"), value="", max_lines=8, interactive=True, placeholder=i18n("Model information to be placed.")
                     )
                     name_to_save0 = gr.Textbox(
                         label=i18n("保存的模型名不带后缀"),
                         value="",
-                        placeholder="Name for saving.",
+                        placeholder=i18n("Name for saving."),
                         max_lines=1,
                         interactive=True,
                     )
@@ -2684,14 +2684,14 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                 gr.Markdown(value=i18n("修改模型信息(仅支持weights文件夹下提取的小模型文件)"))
                 with gr.Row(): ######
                     ckpt_path0 = gr.Textbox(
-                        label=i18n("模型路径"), placeholder="Path to your Model.", value="", interactive=True
+                        label=i18n("模型路径"), placeholder=i18n("Path to your Model."), value="", interactive=True
                     )
                     info_ = gr.Textbox(
-                        label=i18n("要改的模型信息"), value="", max_lines=8, interactive=True, placeholder="Model information to be changed."
+                        label=i18n("要改的模型信息"), value="", max_lines=8, interactive=True, placeholder=i18n("Model information to be changed.")
                     )
                     name_to_save1 = gr.Textbox(
                         label=i18n("保存的文件名, 默认空为和源文件同名"),
-                        placeholder="Either leave empty or put in the Name of the Model to be saved.",
+                        placeholder=i18n("Either leave empty or put in the Name of the Model to be saved."),
                         value="",
                         max_lines=8,
                         interactive=True,
@@ -2704,7 +2704,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                 gr.Markdown(value=i18n("查看模型信息(仅支持weights文件夹下提取的小模型文件)"))
                 with gr.Row():
                     ckpt_path1 = gr.Textbox(
-                        label=i18n("模型路径"), value="", interactive=True, placeholder="Model path here."
+                        label=i18n("模型路径"), value="", interactive=True, placeholder=i18n("Model path here.")
                     )
                     but8 = gr.Button(i18n("查看"), variant="primary")
                     info6 = gr.Textbox(label=i18n("输出信息"), value="", max_lines=8)
@@ -2724,7 +2724,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                     )
                     save_name = gr.Textbox(
                         label=i18n("保存名"), value="", interactive=True,
-                        placeholder="Your filename here.",
+                        placeholder=i18n("Your filename here."),
                     )
                     sr__ = gr.Radio(
                         label=i18n("目标采样率"),
@@ -2733,7 +2733,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         interactive=True,
                     )
                     if_f0__ = gr.Checkbox(
-                        label="Whether the model has pitch guidance.",
+                        label=i18n("Whether the model has pitch guidance."),
                         value=True,
                         interactive=True,
                     )
@@ -2744,7 +2744,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
                         interactive=True,
                     )
                     info___ = gr.Textbox(
-                        label=i18n("要置入的模型信息"), value="", max_lines=8, interactive=True, placeholder="Model info here."
+                        label=i18n("要置入的模型信息"), value="", max_lines=8, interactive=True, placeholder=i18n("Model info here.")
                     )
                     but9 = gr.Button(i18n("提取"), variant="primary")
                     info7 = gr.Textbox(label=i18n("输出信息"), value="", max_lines=8)
@@ -2759,10 +2759,10 @@ with gr.Blocks(theme=gr.themes.Soft(), title='Mangio-RVC-Web 💻') as app:
 
         with gr.TabItem(i18n("Onnx导出")):
             with gr.Row():
-                ckpt_dir = gr.Textbox(label=i18n("RVC模型路径"), value="", interactive=True, placeholder="RVC model path.")
+                ckpt_dir = gr.Textbox(label=i18n("RVC模型路径"), value="", interactive=True, placeholder=i18n("RVC model path."))
             with gr.Row():
                 onnx_dir = gr.Textbox(
-                    label=i18n("Onnx输出路径"), value="", interactive=True, placeholder="Onnx model output path."
+                    label=i18n("Onnx输出路径"), value="", interactive=True, placeholder=i18n("Onnx model output path.")
                 )
             with gr.Row():
                 infoOnnx = gr.Label(label="info")
