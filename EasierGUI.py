@@ -1,4 +1,4 @@
-import zipfile, glob, subprocess, torch, os, traceback, sys, warnings, shutil, numpy as np
+import subprocess, torch, os, traceback, sys, warnings, shutil, numpy as np
 from mega import Mega
 os.environ["no_proxy"] = "localhost, 127.0.0.1, ::1"
 import threading
@@ -13,7 +13,6 @@ sys.path.append(now_dir)
 tmp = os.path.join(now_dir, "TEMP")
 shutil.rmtree(tmp, ignore_errors=True)
 shutil.rmtree("%s/runtime/Lib/site-packages/infer_pack" % (now_dir), ignore_errors=True)
-shutil.rmtree("%s/runtime/Lib/site-packages/uvr5_pack" % (now_dir), ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
 os.makedirs(os.path.join(now_dir, "logs"), exist_ok=True)
 os.makedirs(os.path.join(now_dir, "weights"), exist_ok=True)
@@ -21,12 +20,11 @@ os.environ["TEMP"] = tmp
 warnings.filterwarnings("ignore")
 torch.manual_seed(114514)
 from i18n import I18nAuto
-import ffmpeg
 
 import signal
 
 import math
-import csv
+
 from my_utils import load_audio, CSVutil
 
 global DoFormant, Quefrency, Timbre
@@ -87,7 +85,7 @@ def formant_apply(qfrency, tmbre):
 
 def get_fshift_presets():
     fshift_presets_list = []
-    for dirpath, dirnames, filenames in os.walk("./formantshiftcfg/"):
+    for dirpath, _, filenames in os.walk("./formantshiftcfg/"):
         for filename in filenames:
             if filename.endswith(".txt"):
                 fshift_presets_list.append(os.path.join(dirpath,filename).replace('\\','/'))
@@ -225,8 +223,6 @@ import gradio as gr
 import logging
 from vc_infer_pipeline import VC
 from config import Config
-from infer_uvr5 import _audio_pre_, _audio_pre_new
-from train.process_ckpt import show_info, change_info, merge, extract_small_model
 
 config = Config()
 # from trainset_preprocess_pipeline import PreProcess
@@ -250,7 +246,6 @@ def load_hubert():
 
 
 weight_root = "weights"
-weight_uvr5_root = "uvr5_weights"
 index_root = "logs"
 names = []
 for name in os.listdir(weight_root):
@@ -261,10 +256,7 @@ for root, dirs, files in os.walk(index_root, topdown=False):
     for name in files:
         if name.endswith(".index") and "trained" not in name:
             index_paths.append("%s/%s" % (root, name))
-uvr5_names = []
-for name in os.listdir(weight_uvr5_root):
-    if name.endswith(".pth") or "onnx" in name:
-        uvr5_names.append(name.replace(".pth", ""))
+
 
 
 def vc_single(
@@ -428,87 +420,6 @@ def vc_multi(
         yield "\n".join(infos)
     except:
         yield traceback.format_exc()
-
-
-def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format0):
-    infos = []
-    try:
-        inp_root = inp_root.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-        save_root_vocal = (
-            save_root_vocal.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-        )
-        save_root_ins = (
-            save_root_ins.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-        )
-        if model_name == "onnx_dereverb_By_FoxJoy":
-            pre_fun = MDXNetDereverb(15)
-        else:
-            func = _audio_pre_ if "DeEcho" not in model_name else _audio_pre_new
-            pre_fun = func(
-                agg=int(agg),
-                model_path=os.path.join(weight_uvr5_root, model_name + ".pth"),
-                device=config.device,
-                is_half=config.is_half,
-            )
-        if inp_root != "":
-            paths = [os.path.join(inp_root, name) for name in os.listdir(inp_root)]
-        else:
-            paths = [path.name for path in paths]
-        for path in paths:
-            inp_path = os.path.join(inp_root, path)
-            need_reformat = 1
-            done = 0
-            try:
-                info = ffmpeg.probe(inp_path, cmd="ffprobe")
-                if (
-                    info["streams"][0]["channels"] == 2
-                    and info["streams"][0]["sample_rate"] == "44100"
-                ):
-                    need_reformat = 0
-                    pre_fun._path_audio_(
-                        inp_path, save_root_ins, save_root_vocal, format0
-                    )
-                    done = 1
-            except:
-                need_reformat = 1
-                traceback.print_exc()
-            if need_reformat == 1:
-                tmp_path = "%s/%s.reformatted.wav" % (tmp, os.path.basename(inp_path))
-                os.system(
-                    "ffmpeg -i %s -vn -acodec pcm_s16le -ac 2 -ar 44100 %s -y"
-                    % (inp_path, tmp_path)
-                )
-                inp_path = tmp_path
-            try:
-                if done == 0:
-                    pre_fun._path_audio_(
-                        inp_path, save_root_ins, save_root_vocal, format0
-                    )
-                infos.append("%s->Success" % (os.path.basename(inp_path)))
-                yield "\n".join(infos)
-            except:
-                infos.append(
-                    "%s->%s" % (os.path.basename(inp_path), traceback.format_exc())
-                )
-                yield "\n".join(infos)
-    except:
-        infos.append(traceback.format_exc())
-        yield "\n".join(infos)
-    finally:
-        try:
-            if model_name == "onnx_dereverb_By_FoxJoy":
-                del pre_fun.pred.model
-                del pre_fun.pred.model_
-            else:
-                del pre_fun.model
-                del pre_fun
-        except:
-            traceback.print_exc()
-        print("clean_empty_cache")
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    yield "\n".join(infos)
-
 
 # 一个选项卡全局只能有一个音色
 def get_vc(sid):
@@ -1344,14 +1255,14 @@ def get_presets():
 def change_choices2():
     audio_files=[]
     for filename in os.listdir("./audios"):
-        if filename.endswith(('.wav','.mp3')):
-            audio_files.append(os.path.join('./audios',filename))
+        if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
+            audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
     return {"choices": sorted(audio_files), "__type__": "update"}, {"__type__": "update"}
     
 audio_files=[]
 for filename in os.listdir("./audios"):
-    if filename.endswith(('.wav','.mp3')):
-        audio_files.append(os.path.join('./audios',filename))
+    if filename.endswith(('.wav','.mp3','.ogg','.flac','.m4a','.aac','.mp4')):
+        audio_files.append(os.path.join('./audios',filename).replace('\\', '/'))
         
 def get_index():
     if check_for_name() != '':
@@ -1564,10 +1475,11 @@ def zip_downloader(model):
     else:
         return f'./weights/{model}.pth', "Could not find Index file."
 
-with gr.Blocks(theme=gr.themes.Base()) as app:
+with gr.Blocks(theme=gr.themes.Base(), title='Mangio-RVC-Web 💻') as app:
     with gr.Tabs():
         with gr.TabItem("Inference"):
-            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 </h1>")
+            gr.HTML("<h1> Easy GUI v2 (rejekts) - adapted to Mangio-RVC-Fork 💻 [With extra features and fixes by kalomaze & alexlnkp]</h1>")
+
             # Inference Preset Row
             # with gr.Row():
             #     mangio_preset = gr.Dropdown(label="Inference Preset", choices=sorted(get_presets()))
@@ -1666,7 +1578,11 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                             value=0.66,
                             interactive=True,
                             )
-                    vc_output2 = gr.Audio(label="Output Audio (Click on the Three Dots in the Right Corner to Download)",type='filepath')
+                    vc_output2 = gr.Audio(
+                        label="Output Audio (Click on the Three Dots in the Right Corner to Download)",
+                        type='filepath',
+                        interactive=False,
+                    )
                     animate_button.click(fn=mouth, inputs=[size, face, vc_output2, faces], outputs=[animation, preview])
                     with gr.Accordion("Advanced Settings", open=False):
                         f0method0 = gr.Radio(
@@ -2167,17 +2083,6 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
                         info3,
                     )
 
-
-                try:
-                    if tab_faq == "常见问题解答":
-                        with open("docs/faq.md", "r", encoding="utf8") as f:
-                            info = f.read()
-                    else:
-                        with open("docs/faq_en.md", "r", encoding="utf8") as f:
-                            info = f.read()
-                    gr.Markdown(value=info)
-                except:
-                    gr.Markdown("")
         else:
             print(
                 "Pretrained weights not downloaded. Disabling training tab.\n"
@@ -2194,3 +2099,4 @@ with gr.Blocks(theme=gr.themes.Base()) as app:
             server_port=config.listen_port,
             quiet=True,
         )
+#endregion
